@@ -1,109 +1,324 @@
 <!doctype html>
-<html lang="uk">
+<html lang="uk" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Geo-Sleuth Web — знайди, де знято фото</title>
-  <meta name="description" content="Браузерний інструмент: перетягни фото — отримай GPS, EXIF, OCR-підказки та посилання на зворотний пошук зображень. Усе локально." />
+  <meta name="description" content="Браузерний OSINT-інструмент: перетягни фото — отримай GPS, EXIF, карту, сонце/тіні, погоду, OCR, пам’ятки поруч і звіт. Усе локально." />
+  <meta name="theme-color" content="#0b1020" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
+  <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <link rel="stylesheet" href="./css/style.css" />
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('geoTheme');
+        var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = theme;
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
 </head>
 <body>
+  <a class="skip-link" href="#main" data-i18n="skipLink">Перейти до вмісту</a>
+
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">🧭</span>
-      <div>
-        <strong>Geo-Sleuth Web</strong>
-        <span>де знято фото · у браузері</span>
-      </div>
+    <a class="brand" href="./" aria-label="Geo-Sleuth Web">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="25" height="25" fill="none">
+          <circle cx="16" cy="16" r="12.5" stroke="rgba(255,255,255,.85)" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="9" stroke="rgba(255,255,255,.28)" stroke-width="1" stroke-dasharray="2 3"/>
+          <path d="M16 4.5 19 13l-3 3-3-3z" fill="#fff"/>
+          <path d="M16 27.5 13 19l3-3 3 3z" fill="rgba(255,255,255,.7)"/>
+          <path d="M4.5 16 13 13l3 3-3 3z" fill="rgba(255,255,255,.85)"/>
+          <path d="M27.5 16 19 19l-3-3 3-3z" fill="rgba(255,255,255,.85)"/>
+          <circle cx="16" cy="16" r="2" fill="#0b1020"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <strong>Geo-Sleuth <span class="brand-accent">Web</span></strong>
+        <small data-i18n="brandTagline">де знято фото · у браузері</small>
+      </span>
+    </a>
+    <div class="top-actions">
+      <button id="langBtn" class="icon-btn" type="button" data-i18n-title="langToggleTitle" aria-label="Switch language">
+        <span id="langLabel">EN</span>
+      </button>
+      <button id="themeBtn" class="icon-btn" type="button" data-i18n-title="themeToggleTitle" aria-label="Toggle theme">
+        <span id="themeIcon" class="theme-icon" aria-hidden="true">
+          <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.1"/>
+            <path d="M12 2.4v2.3M12 19.3v2.3M2.4 12h2.3M19.3 12h2.3M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>
+          </svg>
+          <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+            <path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8a8.6 8.6 0 1 0 10.8 10.8Z"/>
+          </svg>
+        </span>
+      </button>
+      <a class="icon-btn gh-btn" href="https://github.com/aprowaz1-crypto/geo-sleuth-web" target="_blank" rel="noopener" data-i18n-title="ghTitle" aria-label="GitHub">GH</a>
     </div>
   </header>
 
-  <main class="container">
-    <section class="drop-section">
-      <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop a photo here or click to choose">
-        <div class="drop-icon">📷</div>
-        <strong>Перетягни фото сюди або натисни, щоб вибрати</strong>
-        <span>FITS не потрібні — JPEG/PNG/WEBP/HEIC. Обробка локально у браузері.</span>
-        <input id="fileInput" type="file" accept="image/*" hidden />
+  <main id="main" class="container">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow" data-i18n="heroEyebrow">OSINT · фото → координати</span>
+        <h1 data-i18n-html="heroTitle">Перетвори фото на <span class="grad">місце</span> й <span class="grad">час</span></h1>
+        <p data-i18n="heroSubtitle">Перетягни або встав фото (Ctrl+V). Інструмент витягне GPS та EXIF, покаже карту й супутник, порахує положення сонця та тіней, перевірить погоду, розпізнає текст і збере звіт. Усе — локально у браузері.</p>
+        <div class="badges">
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span> <span data-i18n="badgeLocal">100% локально</span></span>
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span> <span data-i18n="badgeExif">EXIF / GPS</span></span>
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span> <span data-i18n="badgeMap">Карта + супутник</span></span>
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span> <span data-i18n="badgeSun">Сонце й тіні</span></span>
+          <span class="badge"><span class="badge-dot" aria-hidden="true"></span> <span data-i18n="badgeOcr">OCR + підказки</span></span>
+        </div>
+      </div>
+      <div class="hero-orb" aria-hidden="true">
+        <div class="orb-ring"></div>
+        <div class="orb-ring ring-2"></div>
+        <div class="orb-core">
+          <svg viewBox="0 0 64 64" width="64" height="64" fill="none">
+            <circle cx="32" cy="32" r="26" stroke="rgba(255,255,255,.35)" stroke-width="1.4"/>
+            <circle cx="32" cy="32" r="19" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="2 4"/>
+            <path d="M32 8 39 26l-7 6-7-6z" fill="#fff"/>
+            <path d="M32 56 25 38l7-6 7 6z" fill="rgba(255,255,255,.62)"/>
+            <path d="M8 32 26 25l6 7-6 7z" fill="rgba(255,255,255,.82)"/>
+            <path d="M56 32 38 39l-6-7 6-7z" fill="rgba(255,255,255,.82)"/>
+            <circle cx="32" cy="32" r="4.4" fill="#0b1020"/>
+            <circle cx="32" cy="32" r="1.8" fill="#fff"/>
+          </svg>
+        </div>
       </div>
     </section>
 
+    <section class="drop-section">
+      <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-labelledby="dropTitle" aria-describedby="dropHint">
+        <input id="fileInput" type="file" accept="image/*,.heic,.heif,.avif,.tif,.tiff" hidden />
+        <div class="drop-ico" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="54" height="54" fill="none">
+            <path d="M18 44h29a10 10 0 0 0 .6-20A15 15 0 0 0 19 21.5 9.5 9.5 0 0 0 18 44Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+            <path d="M32 29v16m0-16-6.5 6.5M32 29l6.5 6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18 50h28" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity=".35"/>
+          </svg>
+        </div>
+        <strong id="dropTitle" data-i18n="dropTitle">Перетягни фото сюди або натисни, щоб вибрати</strong>
+        <span id="dropHint" data-i18n="dropHint">Обробка відбувається локально — фото не завантажується на сервер.</span>
+        <span class="drop-formats" data-i18n="dropFormats">JPEG · PNG · WebP · HEIC/HEIF · AVIF · TIFF</span>
+        <span class="drop-paste" data-i18n="dropPaste">Можна вставити з буфера: Ctrl+V / ⌘V</span>
+        <div id="dropProgress" class="drop-progress" hidden><span></span></div>
+      </div>
+      <div id="fileError" class="file-error" role="alert" hidden></div>
+    </section>
+
     <section id="results" class="results" hidden>
-      <div class="results-grid">
-        <div class="panel preview-panel">
+      <div id="verdict" class="verdict-wrap" role="status" aria-live="polite"></div>
+
+      <div class="grid two">
+        <article class="panel preview-panel">
           <div id="previewWrap" class="preview-wrap empty">
             <img id="preview" alt="preview" />
-            <div class="preview-placeholder">Немає фото</div>
+            <div class="preview-placeholder" data-i18n="noPhoto">Немає фото</div>
           </div>
           <div class="file-meta">
             <span id="fileName">—</span>
             <span id="fileSize">—</span>
           </div>
+          <div id="quickChips" class="quick-chips"></div>
+          <div class="panel-actions">
+            <button id="downloadPhoto" class="btn secondary" type="button" data-i18n="downloadPhoto">Завантажити фото</button>
+            <button id="resetBtn" class="btn ghost" type="button" data-i18n="newPhoto">Інше фото</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <header class="panel-head">
+            <h2 data-i18n="exifTitle">EXIF / метадані</h2>
+            <span id="exifSource" class="tag" hidden></span>
+          </header>
+          <div id="exifPanel" class="kv-list"></div>
+          <details id="rawDetails" class="raw-details" hidden>
+            <summary data-i18n="rawTitle">Усі метадані (JSON)</summary>
+            <pre id="rawJson"></pre>
+            <button id="copyRaw" class="btn secondary small" type="button" data-i18n="copyRaw">Копіювати JSON</button>
+          </details>
+        </article>
+      </div>
+
+      <article id="mapCard" class="panel map-card" hidden>
+        <header class="panel-head">
+          <h2 data-i18n="mapTitle">Карта й супутник</h2>
+          <div class="panel-actions">
+            <button id="copyCoords" class="btn secondary small" type="button" data-i18n="copyCoords">Копіювати координати</button>
+            <button id="mapFullscreen" class="btn secondary small" type="button" data-i18n="fullscreen">На весь екран</button>
+          </div>
+        </header>
+        <div id="map" class="map"></div>
+        <div id="mapCoords" class="map-coords">—</div>
+        <div id="mapFallback" class="map-fallback" hidden></div>
+        <div class="map-links">
+          <a id="linkGoogle" class="link-btn" target="_blank" rel="noopener">Google Maps</a>
+          <a id="linkOsm" class="link-btn" target="_blank" rel="noopener">OpenStreetMap</a>
+          <a id="linkGeoHack" class="link-btn" target="_blank" rel="noopener">GeoHack</a>
+          <a id="linkApple" class="link-btn" target="_blank" rel="noopener">Apple Maps</a>
+          <a id="linkMapillary" class="link-btn" target="_blank" rel="noopener">Mapillary</a>
         </div>
+      </article>
 
-        <div class="panel">
-          <h2>EXIF / метадані</h2>
-          <div id="exifPanel" class="exif-panel"><div class="exif-empty">Чекаю на фото…</div></div>
+      <div class="grid two">
+        <article id="sunCard" class="panel" hidden>
+          <header class="panel-head">
+            <h2 data-i18n="sunTitle">Сонце та тіні</h2>
+            <span id="sunBadge" class="tag" hidden></span>
+          </header>
+          <div class="sun-layout">
+            <div id="sunCompass" class="compass"></div>
+            <div id="sunDetails" class="kv-list"></div>
+          </div>
+          <div id="sunPathWrap" class="sun-path-wrap" hidden>
+            <h3 data-i18n="sunPathTitle">Траєкторія сонця</h3>
+            <div id="sunPath" class="sun-path"></div>
+          </div>
+          <div id="sunTimes" class="sun-times"></div>
+          <p id="sunNote" class="hint"></p>
+        </article>
+
+        <article id="locationCard" class="panel" hidden>
+          <header class="panel-head">
+            <h2 data-i18n="locationTitle">Місце</h2>
+          </header>
+          <div id="locationPanel" class="kv-list"></div>
+          <div id="locationLinks" class="link-grid"></div>
+        </article>
+      </div>
+
+      <div class="grid two">
+        <article id="weatherCard" class="panel" hidden>
+          <header class="panel-head">
+            <h2 data-i18n="weatherTitle">Погода на момент зйомки</h2>
+            <span id="weatherBadge" class="tag" hidden></span>
+          </header>
+          <div id="weatherPanel" class="kv-list"></div>
+          <p class="hint" data-i18n="weatherHint">Хмарність допомагає перевірити, чи мали бути тіні на фото.</p>
+        </article>
+
+        <article id="wikiCard" class="panel" hidden>
+          <header class="panel-head">
+            <h2 data-i18n="wikiTitle">Поруч у Wikipedia</h2>
+          </header>
+          <div id="wikiPanel" class="nearby-list"></div>
+        </article>
+      </div>
+
+      <article id="osmCard" class="panel" hidden>
+        <header class="panel-head">
+          <h2 data-i18n="osmTitle">Об’єкти поруч (OpenStreetMap)</h2>
+          <span id="osmStatus" class="tag" hidden></span>
+        </header>
+        <div id="osmPanel" class="nearby-list"></div>
+      </article>
+
+      <div class="grid two">
+        <article class="panel">
+          <header class="panel-head">
+            <h2 data-i18n="ocrTitle">OCR — текст на фото</h2>
+          </header>
+          <div class="ocr-controls">
+            <label class="field">
+              <span data-i18n="ocrLang">Мова розпізнавання</span>
+              <select id="ocrLang">
+                <option value="eng+ukr+rus">English + Українська + Русский</option>
+                <option value="eng+ukr">English + Українська</option>
+                <option value="eng+rus">English + Русский</option>
+                <option value="eng">English</option>
+                <option value="ukr">Українська</option>
+                <option value="rus">Русский</option>
+                <option value="pol">Polski</option>
+                <option value="deu">Deutsch</option>
+                <option value="fra">Français</option>
+                <option value="spa">Español</option>
+                <option value="ita">Italiano</option>
+                <option value="por">Português</option>
+                <option value="tur">Türkçe</option>
+                <option value="ara">العربية</option>
+                <option value="heb">עברית</option>
+                <option value="chi_sim">中文（简体）</option>
+                <option value="jpn">日本語</option>
+                <option value="kor">한국어</option>
+                <option value="hin">हिन्दी</option>
+              </select>
+            </label>
+            <label class="check">
+              <input id="ocrPreprocess" type="checkbox" checked />
+              <span data-i18n="ocrPreprocess">Покращити зображення</span>
+            </label>
+            <button id="ocrRun" class="btn" type="button" data-i18n="ocrRun">Розпізнати текст</button>
+          </div>
+          <div id="ocrStatus" class="status-line" aria-live="polite"></div>
+          <progress id="ocrProgress" max="1" value="0" hidden></progress>
+          <pre id="ocrOutput" class="ocr-output"></pre>
+        </article>
+
+        <article class="panel">
+          <header class="panel-head">
+            <h2 data-i18n="cluesTitle">Підказки</h2>
+            <button id="copyClues" class="btn secondary small" type="button" hidden data-i18n="copyClues">Копіювати підказки</button>
+          </header>
+          <div id="cluesPanel" class="clues-panel">
+            <div class="empty" data-i18n="cluesEmpty">Після OCR тут з’являться номери, адреси, назви та інші зачіпки.</div>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel">
+        <header class="panel-head">
+          <h2 data-i18n="reverseTitle">Зворотний пошук зображень</h2>
+        </header>
+        <p class="hint" data-i18n="reverseHint">Ці сервіси не приймають локальний файл за посиланням — відкрий сервіс і перетягни туди фото (кнопка «Завантажити фото» вище).</p>
+        <div id="reverseLinks" class="link-grid"></div>
+      </article>
+
+      <article class="panel report-panel">
+        <header class="panel-head">
+          <h2 data-i18n="reportTitle">Звіт про локацію</h2>
+        </header>
+        <p class="hint" data-i18n="reportHint">Збережи всі результати у Markdown або JSON — зручно для нотаток і подальшого аналізу.</p>
+        <div class="panel-actions">
+          <button id="reportMd" class="btn" type="button" data-i18n="reportMd">Завантажити .md</button>
+          <button id="reportJson" class="btn secondary" type="button" data-i18n="reportJson">Завантажити .json</button>
+          <button id="copyReport" class="btn secondary" type="button" data-i18n="reportCopy">Копіювати звіт</button>
         </div>
-      </div>
-
-      <div id="verdict" class="verdict-wrap"></div>
-
-      <div id="mapWrap" class="panel map-panel" hidden>
-        <h2>Карта (OpenStreetMap)</h2>
-        <iframe id="mapFrame" class="map-frame" loading="lazy" referrerpolicy="no-referrer"></iframe>
-        <a id="mapLink" class="link-btn" target="_blank" rel="noopener">Відкрити в Google Maps</a>
-      </div>
-
-      <div id="satWrap" class="panel map-panel" hidden>
-        <h2>Супутник (Google Maps)</h2>
-        <iframe id="satFrame" class="map-frame" loading="lazy" referrerpolicy="no-referrer"></iframe>
-        <a id="satLink" class="link-btn" target="_blank" rel="noopener">Відкрити супутник</a>
-      </div>
-
-      <div class="panel">
-        <h2>Сонце та тіні</h2>
-        <div id="sunPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS + час зйомки.</div></div>
-      </div>
-
-      <div class="panel">
-        <h2>Зворотна геокодування</h2>
-        <div id="geoPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS.</div></div>
-      </div>
-
-      <div class="panel">
-        <h2>Об'єкти поруч (OpenStreetMap)</h2>
-        <div id="osmPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS.</div></div>
-      </div>
-
-      <div class="panel">
-        <h2>OCR (текст на фото)</h2>
-        <div id="ocrStatus" class="status-line">—</div>
-        <pre id="ocrOutput" class="ocr-output"></pre>
-      </div>
-
-      <div class="panel">
-        <h2>Підказки (OCR)</h2>
-        <div id="cluesPanel" class="clues-panel"><div class="exif-empty">Після OCR з'являться підказки.</div></div>
-      </div>
-
-      <div class="panel">
-        <h2>Зворотний пошук зображень</h2>
-        <div id="reverseLinks"></div>
-      </div>
+      </article>
     </section>
 
     <section class="note-section">
       <div class="note">
-        <strong>Примітка:</strong> повний geo-sleuth (OSM-геометрія, скайлан, супутник, Street View, CLIP/DINOv2) працює через Python-скіл і дає точність до метрів. Ця веб-версія робить швидкий перший крок у браузері: EXIF GPS → карта, OCR → підказки, посилання на зворотний пошук. Для глибокого аналізу використовуй geo-sleuth у OpenCode.
+        <strong data-i18n="noteTitle">Як це працює</strong>
+        <span data-i18n="noteBody">EXIF читається локально (exifr + вбудований парсер). Карта — Leaflet/OSM, супутник — Esri, адреса — Nominatim, висота й погода — Open-Meteo, пам’ятки — Wikipedia, об’єкти — Overpass. Жодне фото не покидає твій пристрій; запити до сервісів ідуть лише за координатами. Для глибокого аналізу (скайлайн, CLIP/DINOv2, Street View) використовуй Python-скіл geo-sleuth в OpenCode.</span>
       </div>
     </section>
   </main>
 
+  <footer class="footer">
+    <span data-i18n="footerBuilt">Зроблено з geo-sleuth · 100% у браузері</span>
+    <span aria-hidden="true">·</span>
+    <a href="https://github.com/Oldcircle/geo-sleuth" target="_blank" rel="noopener">geo-sleuth skill</a>
+    <span aria-hidden="true">·</span>
+    <a href="https://github.com/aprowaz1-crypto/geo-sleuth-web" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="./js/i18n.js"></script>
   <script src="./js/exif.js"></script>
   <script src="./js/sun.js"></script>
+  <script src="./js/map.js"></script>
+  <script src="./js/report.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>
-EOF
-echo "written index.html"

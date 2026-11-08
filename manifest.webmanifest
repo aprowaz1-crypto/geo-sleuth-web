@@ -1,0 +1,49 @@
+{
+  "name": "Geo-Sleuth Web — де знято фото",
+  "short_name": "Geo-Sleuth",
+  "description": "Браузерний OSINT-інструмент: EXIF/GPS, карта й супутник, сонце та тіні, погода, OCR, пам’ятки поруч і звіт. Усе локально.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060a13",
+  "theme_color": "#0b1020",
+  "lang": "uk",
+  "dir": "ltr",
+  "categories": ["utilities", "photo", "navigation", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Відкрити інструмент",
+      "short_name": "Відкрити",
+      "url": "./#main",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
