@@ -55,6 +55,27 @@
         <a id="mapLink" class="link-btn" target="_blank" rel="noopener">Відкрити в Google Maps</a>
       </div>
 
+      <div id="satWrap" class="panel map-panel" hidden>
+        <h2>Супутник (Google Maps)</h2>
+        <iframe id="satFrame" class="map-frame" loading="lazy" referrerpolicy="no-referrer"></iframe>
+        <a id="satLink" class="link-btn" target="_blank" rel="noopener">Відкрити супутник</a>
+      </div>
+
+      <div class="panel">
+        <h2>Сонце та тіні</h2>
+        <div id="sunPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS + час зйомки.</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Зворотна геокодування</h2>
+        <div id="geoPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS.</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Об'єкти поруч (OpenStreetMap)</h2>
+        <div id="osmPanel" class="exif-panel"><div class="exif-empty">Потрібні GPS.</div></div>
+      </div>
+
       <div class="panel">
         <h2>OCR (текст на фото)</h2>
         <div id="ocrStatus" class="status-line">—</div>
@@ -80,6 +101,7 @@
   </main>
 
   <script src="./js/exif.js"></script>
+  <script src="./js/sun.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>
