@@ -58,6 +58,104 @@
     panel.innerHTML = rows.join('');
   }
 
+  function showSatellite(lat, lon) {
+    const wrap = $('satWrap');
+    const iframe = $('satFrame');
+    const link = $('satLink');
+    const url = `https://www.google.com/maps/@${lat},${lon},18z/data=!3m1!1e3`;
+    iframe.src = url;
+    link.href = `https://www.google.com/maps/@${lat},${lon},18z/data=!3m1!1e3`;
+    link.textContent = `Open satellite view (${lat.toFixed(6)}, ${lon.toFixed(6)})`;
+    wrap.hidden = false;
+  }
+
+  function showSun(lat, lon, exif) {
+    const panel = $('sunPanel');
+    if (!window.GeoSun) {
+      panel.innerHTML = '<div class="exif-empty">Sun module not loaded.</div>';
+      return;
+    }
+    // parse date/time from exif
+    const dtStr = exif.dateTimeOriginal || exif.dateTime || exif.dateTimeDigitized || exif.gpsDateStamp;
+    let date = null;
+    if (dtStr) {
+      // format "YYYY:MM:DD HH:MM:SS" or "YYYY-MM-DD"
+      const m = String(dtStr).match(/(\d{4})[:\-](\d{2})[:\-](\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?/);
+      if (m) {
+        const y = +m[1], mo = +m[2] - 1, d = +m[3];
+        const h = m[4] ? +m[4] : 12;
+        const mi = m[5] ? +m[5] : 0;
+        const s = m[6] ? +m[6] : 0;
+        date = new Date(Date.UTC(y, mo, d, h, mi, s));
+      }
+    }
+    if (!date) {
+      panel.innerHTML = '<div class="exif-empty">No date/time in EXIF — cannot compute sun position.</div>';
+      return;
+    }
+    const sp = window.GeoSun.solarPosition(lat, lon, date);
+    const shadow = window.GeoSun.shadowBearing(sp.azimuth);
+    const dirName = (az) => {
+      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+      return dirs[Math.round(az / 45) % 8];
+    };
+    panel.innerHTML = `
+      <div class="exif-row"><span class="exif-label">Date/Time (UTC)</span><span class="exif-value">${date.toISOString().replace('T',' ').slice(0,19)}</span></div>
+      <div class="exif-row"><span class="exif-label">Sun azimuth</span><span class="exif-value">${sp.azimuth.toFixed(1)}° (${dirName(sp.azimuth)})</span></div>
+      <div class="exif-row"><span class="exif-label">Sun elevation</span><span class="exif-value">${sp.elevation.toFixed(1)}° ${sp.elevation < 0 ? '(below horizon)' : ''}</span></div>
+      <div class="exif-row"><span class="exif-label">Shadow bearing</span><span class="exif-value">${shadow.toFixed(1)}° (${dirName(shadow)})</span></div>
+      <div class="exif-row"><span class="exif-label">Declination</span><span class="exif-value">${sp.declination.toFixed(2)}°</span></div>
+      <div class="hint" style="margin-top:8px">Shadows in the photo point toward ~${dirName(shadow)} — use this to cross-check orientation and time of day.</div>
+    `;
+  }
+
+  async function reverseGeocode(lat, lon) {
+    const panel = $('geoPanel');
+    panel.innerHTML = '<div class="exif-empty">Loading…</div>';
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const addr = data.address || {};
+      const lines = [];
+      const add = (label, val) => { if (val) lines.push(`<div class="exif-row"><span class="exif-label">${escapeHtml(label)}</span><span class="exif-value">${escapeHtml(String(val))}</span></div>`); };
+      add('Display name', data.display_name);
+      add('Road', addr.road || addr.street);
+      add('House number', addr.house_number);
+      add('City/Town', addr.city || addr.town || addr.village || addr.hamlet);
+      add('State/Region', addr.state || addr.region);
+      add('Country', addr.country);
+      add('Postcode', addr.postcode);
+      if (lines.length === 0) lines.push('<div class="exif-empty">No address found.</div>');
+      panel.innerHTML = lines.join('');
+    } catch (err) {
+      panel.innerHTML = `<div class="exif-empty">Reverse geocoding failed: ${escapeHtml(err && err.message ? err.message : err)}</div>`;
+    }
+  }
+
+  async function osmNearby(lat, lon) {
+    const panel = $('osmPanel');
+    panel.innerHTML = '<div class="exif-empty">Loading nearby features…</div>';
+    const query = `[out:json][timeout:15];(node(around:200,${lat},${lon})[amenity];node(around:200,${lat},${lon})[shop];node(around:200,${lat},${lon})[tourism];node(around:200,${lat},${lon})[historic];way(around:200,${lat},${lon})[highway];);out tags 40;`;
+    try {
+      const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const items = (data.elements || []).slice(0, 40);
+      if (!items.length) { panel.innerHTML = '<div class="exif-empty">No nearby features found.</div>'; return; }
+      const lines = items.map((el) => {
+        const tags = el.tags || {};
+        const name = tags.name || tags['name:en'] || '(unnamed)';
+        const type = tags.amenity || tags.shop || tags.tourism || tags.historic || tags.highway || el.type;
+        return `<div class="exif-row"><span class="exif-label">${escapeHtml(type)}</span><span class="exif-value">${escapeHtml(name)}</span></div>`;
+      });
+      panel.innerHTML = lines.join('');
+    } catch (err) {
+      panel.innerHTML = `<div class="exif-empty">Overpass query failed: ${escapeHtml(err && err.message ? err.message : err)}</div>`;
+    }
+  }
+
   function showMap(lat, lon) {
     const wrap = $('mapWrap');
     const iframe = $('mapFrame');
@@ -196,6 +294,10 @@
       renderExif(currentExif);
       if (currentExif.lat !== undefined && currentExif.lon !== undefined) {
         showMap(currentExif.lat, currentExif.lon);
+        showSatellite(currentExif.lat, currentExif.lon);
+        showSun(currentExif.lat, currentExif.lon, currentExif);
+        reverseGeocode(currentExif.lat, currentExif.lon);
+        osmNearby(currentExif.lat, currentExif.lon);
         $('verdict').innerHTML = `<div class="verdict good">📍 GPS found in EXIF: ${currentExif.lat.toFixed(6)}, ${currentExif.lon.toFixed(6)}</div>`;
       } else {
         $('verdict').innerHTML = `<div class="verdict warn">No GPS in EXIF. Running OCR for clues…</div>`;
