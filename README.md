@@ -1,5 +1,7 @@
 # Geo-Sleuth Web (browser drop-and-locate)
 
+**Live:** https://aprowaz1-crypto.github.io/geo-sleuth-web/
+
 Браузерний помічник для геолокації фото: перетягни фото — отримай EXIF (GPS, час, камера), OCR-підказки (текст, номери, назви) та посилання на зворотний пошук зображень. Усе працює локально у браузері.
 
 > Повний geo-sleuth (OSM-геометрія, скайлан, супутник, Street View, CLIP/DINOv2) — це Python-скіл, що встановлюється в OpenCode. Ця веб-версія робить швидкий перший крок: EXIF GPS → карта, OCR → підказки, reverse-search links.
