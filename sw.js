@@ -1,6 +1,6 @@
 // Geo-Sleuth Web — service worker (offline shell).
 // Version bump forces a refresh of the precache.
-const VERSION = 'geo-sleuth-v2.0.0';
+const VERSION = 'geo-sleuth-v2.0.1';
 const CORE = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const CORE = [
   './icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {

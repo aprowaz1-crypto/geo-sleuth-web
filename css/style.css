@@ -963,6 +963,37 @@ html[data-theme="light"] .leaflet-control-attribution {
 .leaflet-popup-content strong { color: var(--accent); }
 .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
 
+.leaflet-control-layers {
+  background: rgba(10, 16, 31, .92) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+html[data-theme="light"] .leaflet-control-layers {
+  background: rgba(255, 255, 255, .95) !important;
+}
+.leaflet-control-layers-toggle {
+  width: 36px;
+  height: 36px;
+  background-size: 20px 20px;
+}
+html[data-theme="dark"] .leaflet-control-layers-toggle { filter: invert(1) hue-rotate(180deg); }
+.leaflet-control-layers-expanded { padding: 10px 12px; }
+.leaflet-control-layers label { margin: 3px 0; }
+.leaflet-control-layers-separator { border-top-color: var(--border) !important; }
+
+.leaflet-control-scale-line {
+  background: rgba(10, 16, 31, .78);
+  border-color: var(--border-strong);
+  color: var(--muted);
+  text-shadow: none;
+}
+html[data-theme="light"] .leaflet-control-scale-line {
+  background: rgba(255, 255, 255, .88);
+  color: var(--muted);
+}
+
 /* custom pin (from js/map.js) */
 
 .geo-pin-wrap { background: transparent; border: 0; }
